@@ -3,8 +3,10 @@
 use crate::frame::Frame;
 use crate::handle::CastHandle;
 use crate::source::display::{
-    Display, DisplayCaptureError, DisplayCaptureOptions, DisplayCaptureSource,
+    Display, DisplayCaptureError, DisplayCaptureOptions, DisplayCaptureRuntimeError,
+    DisplayCaptureSource,
 };
+use screencapturekit::FourCharCode;
 use screencapturekit::cm::{CMSampleBuffer, CMTime};
 use screencapturekit::dispatch_queue::{DispatchQoS, DispatchQueue};
 use screencapturekit::error::SCError;
@@ -67,8 +69,26 @@ impl SCStreamOutputTrait for FrameHandler {
         };
 
         let Ok(guard) = pixel_buffer.lock_read_only() else {
+            self.handle
+                .report_error(DisplayCaptureRuntimeError::frame_access(
+                    "ScreenCaptureKit could not lock the frame buffer for read-only access",
+                ));
             return;
         };
+
+        let actual_format = FourCharCode::from_u32(guard.pixel_format());
+        let expected_format = FourCharCode::from(CapturePixelFormat::BGRA);
+
+        if actual_format != expected_format {
+            self.handle
+                .report_error(DisplayCaptureRuntimeError::unsupported_pixel_format(
+                    format!(
+                        "ScreenCaptureKit produced an unsupported pixel format: {}",
+                        actual_format.display()
+                    ),
+                ));
+            return;
+        }
 
         // ScreenCaptureKit owns the mapped pixel buffer, so we copy the bytes once
         // for the shared handle and trust the OS-reported BGRA layout on this hot path.

@@ -11,12 +11,10 @@
 //! - [`source`] for ready-made capture sources like monitor capture
 //!
 //! Run `cargo run --example basic -- 1`
-//! for a full `iced` app with `main()` showing the intended flow:
+//! for a full `iced` app with `main()` showing the built-in display source.
 //!
-//! - start one [`DisplayCapture`]
-//! - keep the source wrapper in application state
-//! - render it with [`CastView`]
-//! - drop down to [`CastHandle`] when frames come from your own source
+//! Run `cargo run --example manual_push`
+//! to see the lower-level manual path where your own producer thread feeds frames.
 
 /// Frame values shared by cast handles and sources.
 pub mod frame;

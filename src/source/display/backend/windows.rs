@@ -21,7 +21,7 @@ use windows_capture::settings::{
 /// Running Windows Graphics Capture worker.
 pub(crate) struct WorkerHandle {
     /// Capture control returned by the backend crate.
-    control: CaptureControl<FrameHandler, String>,
+    control: CaptureControl<FrameHandler, ()>,
 }
 
 impl WorkerHandle {

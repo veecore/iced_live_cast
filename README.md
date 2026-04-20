@@ -1,6 +1,9 @@
 # iced_live_cast
 
-`iced_live_cast` is a small `iced`-focused crate for live display casting.
+Blazing-fast cross-platform display casting for `iced`.
+
+`iced_live_cast` is the crate you reach for when you want a live preview in an
+`iced` app without routing frames through your application's message loop.
 
 It gives you three layers:
 
@@ -8,17 +11,28 @@ It gives you three layers:
 - `CastHandle` for callers that already own frames and want to push them
 - `DisplayCapture` for OS-backed display capture on macOS and Windows
 
-The crate keeps the hot path out of your application message loop:
+The hot path stays small:
 
 - sources push frames into a shared handle
 - the widget owns redraw scheduling
 - the renderer reuses one GPU texture per handle instead of rebuilding per frame
 
-## Features
+## Why this crate exists
 
-- active `iced` widget with redraw scheduling
+If you already have frames, use `CastHandle`.
+
+If you want the OS to produce frames for you, use `DisplayCapture`.
+
+If you just want something on screen, use `CastView`.
+
+That is the whole pitch.
+
+## What you get
+
+- an active `iced` widget with redraw scheduling
+- a reusable GPU texture per live handle
 - typed source markers and typed runtime errors
-- BGRA upload path tuned for OS display capture
+- a BGRA upload path tuned for display capture
 - macOS support through `screencapturekit`
 - Windows support through `windows-capture`
 
@@ -49,6 +63,8 @@ For the full story, run:
 cargo run --example basic -- 1
 ```
 
+That example uses the built-in display source.
+
 ## Manual sources
 
 If your frames come from somewhere other than the built-in display source, use
@@ -64,6 +80,29 @@ handle.present(frame);
 
 You can then render the same handle with `CastView::new(&handle)`.
 
+If you want a full running example for that path, run:
+
+```bash
+cargo run --example manual_push
+```
+
+## Benchmarks
+
+Quick local numbers from a short Criterion run on Apple silicon with 1080p frames:
+
+| Benchmark | Size | Result |
+| --- | --- | --- |
+| `frame_construction/from_rgba/packed` | 1080p | about `1.52 ms` |
+| `frame_construction/from_bgra/packed` | 1080p | about `475 µs` |
+| `frame_processing/rgba_pixels/packed_bgra` | 1080p | about `328 µs` |
+| `frame_handles/frame_to_handle/full_frame` | 1080p | about `370 µs` |
+| `cast_handle_updates/present_frame/prebuilt_bgra` | 1080p | about `19 ns` |
+| `cast_handle_updates/construct_and_present/bgra` | 1080p | about `469 µs` |
+
+The GPU upload bench is included too, but treat it as a renderer baseline rather
+than a full end-to-end crate benchmark. It measures the same `wgpu` upload shape
+the renderer uses, not the whole widget pipeline.
+
 ## Platform notes
 
 - macOS requires Screen Recording permission from the OS before display capture
@@ -78,4 +117,5 @@ Useful checks from the workspace root:
 ```bash
 cargo check --lib --examples --benches
 cargo test --lib
+cargo bench --no-run
 ```

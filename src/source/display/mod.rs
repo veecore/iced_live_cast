@@ -331,21 +331,21 @@ impl DisplayCaptureRuntimeError {
         }
     }
 
-    /// Returns whether the source could not access one delivered frame.
-    pub fn is_frame_access(&self) -> bool {
-        matches!(
-            self.kind,
-            DisplayCaptureRuntimeErrorKind::FrameAccess { .. }
-        )
-    }
-
-    /// Returns whether the source delivered one unsupported pixel format.
-    pub fn is_unsupported_pixel_format(&self) -> bool {
-        matches!(
-            self.kind,
-            DisplayCaptureRuntimeErrorKind::UnsupportedPixelFormat { .. }
-        )
-    }
+    // /// Returns whether the source could not access one delivered frame.
+    // pub fn is_frame_access(&self) -> bool {
+    //     matches!(
+    //         self.kind,
+    //         DisplayCaptureRuntimeErrorKind::FrameAccess { .. }
+    //     )
+    // }
+    //
+    // /// Returns whether the source delivered one unsupported pixel format.
+    // pub fn is_unsupported_pixel_format(&self) -> bool {
+    //     matches!(
+    //         self.kind,
+    //         DisplayCaptureRuntimeErrorKind::UnsupportedPixelFormat { .. }
+    //     )
+    // }
 }
 
 impl Source for DisplayCaptureSource {
