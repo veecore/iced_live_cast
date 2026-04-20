@@ -1,0 +1,51 @@
+[package]
+name = "iced_live_cast"
+version = "0.1.0"
+edition = "2021"
+description = "Active low-latency display casting widgets and sources for iced"
+license = "MIT OR Apache-2.0"
+readme = "README.md"
+repository = "https://github.com/veecore/iced_live_cast"
+homepage = "https://github.com/veecore/iced_live_cast"
+documentation = "https://docs.rs/iced_live_cast"
+keywords = ["iced", "screen-capture", "display", "wgpu", "desktop"]
+categories = ["gui", "rendering"]
+
+[dependencies]
+bytemuck = { version = "1.24", features = ["derive"] }
+iced = { version = "0.14", features = ["advanced", "image"] }
+iced_wgpu = "0.14"
+thiserror = "2.0"
+
+[dev-dependencies]
+criterion = "0.8"
+image = "0.25.10"
+iced_video_player = "0.6.0"
+pollster = "0.4"
+url = "2.5.8"
+
+[[bench]]
+name = "frame_construction"
+harness = false
+
+[[bench]]
+name = "frame_processing"
+harness = false
+
+[[bench]]
+name = "frame_handles"
+harness = false
+
+[[bench]]
+name = "handle_updates"
+harness = false
+
+[[bench]]
+name = "gpu_upload"
+harness = false
+
+[target.'cfg(target_os = "macos")'.dependencies]
+screencapturekit = { version = "1.5.4", features = ["macos_15_0"] }
+
+[target.'cfg(target_os = "windows")'.dependencies]
+windows-capture = "1.5.0"

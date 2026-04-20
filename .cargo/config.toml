@@ -1,0 +1,6 @@
+[env]
+PKG_CONFIG_PATH = { value = "/opt/homebrew/opt/gstreamer/lib/pkgconfig", force = false }
+GI_TYPELIB_PATH = { value = "/opt/homebrew/lib/girepository-1.0:/opt/homebrew/opt/gstreamer/lib/girepository-1.0", force = false }
+DYLD_FALLBACK_LIBRARY_PATH = { value = "/opt/homebrew/lib:/opt/homebrew/opt/gstreamer/lib", force = false }
+GST_PLUGIN_SCANNER = { value = "/opt/homebrew/opt/gstreamer/libexec/gstreamer-1.0/gst-plugin-scanner", force = false }
+GST_PLUGIN_SYSTEM_PATH_1_0 = { value = "/opt/homebrew/opt/gstreamer/lib/gstreamer-1.0", force = false }
