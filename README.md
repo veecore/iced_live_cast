@@ -86,6 +86,10 @@ If you want a full running example for that path, run:
 cargo run --example manual_push
 ```
 
+And here is that manual source path running for real:
+
+![Manual push example](assets/manual_push_demo.gif)
+
 ## Benchmarks
 
 Quick local numbers from a short Criterion run on Apple silicon with 1080p frames:

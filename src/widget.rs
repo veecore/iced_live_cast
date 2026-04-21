@@ -104,14 +104,6 @@ where
         Size::new(self.width, self.height)
     }
 
-    fn tag(&self) -> widget::tree::Tag {
-        widget::tree::Tag::of::<CastViewState>()
-    }
-
-    fn state(&self) -> widget::tree::State {
-        widget::tree::State::new(CastViewState::default())
-    }
-
     fn layout(
         &mut self,
         _tree: &mut widget::Tree,
@@ -174,6 +166,14 @@ where
         } else {
             render(renderer);
         }
+    }
+
+    fn tag(&self) -> widget::tree::Tag {
+        widget::tree::Tag::of::<CastViewState>()
+    }
+
+    fn state(&self) -> widget::tree::State {
+        widget::tree::State::new(CastViewState::default())
     }
 
     fn update(

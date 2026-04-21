@@ -21,7 +21,7 @@ use windows_capture::settings::{
 /// Running Windows Graphics Capture worker.
 pub(crate) struct WorkerHandle {
     /// Capture control returned by the backend crate.
-    control: CaptureControl<FrameHandler, ()>,
+    control: CaptureControl<FrameHandler, FrameHandlerError>,
 }
 
 impl WorkerHandle {
@@ -49,11 +49,15 @@ struct FrameHandler {
     handle: CastHandle<DisplayCaptureSource>,
 }
 
+/// Zero-sized callback error used to stop the backend without carrying payloads.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+struct FrameHandlerError;
+
 impl GraphicsCaptureApiHandler for FrameHandler {
     /// Flags passed from [`Settings`] into the handler.
     type Flags = CastHandle<DisplayCaptureSource>;
     /// Error surfaced by the handler back into the control handle.
-    type Error = ();
+    type Error = FrameHandlerError;
 
     /// Builds the frame handler from the configured handle.
     fn new(ctx: Context<Self::Flags>) -> Result<Self, Self::Error> {
@@ -75,6 +79,7 @@ impl GraphicsCaptureApiHandler for FrameHandler {
             return Ok(());
         }
 
+        let format = frame.color_format();
         let width = frame.width();
         let height = frame.height();
         let mut buffer = match frame.buffer() {
@@ -84,17 +89,16 @@ impl GraphicsCaptureApiHandler for FrameHandler {
                     "Windows Graphics Capture could not map the frame: {error}"
                 ));
                 self.handle.report_error(error);
-                return Err(());
+                return Err(FrameHandlerError);
             }
         };
-        let format = frame.color_format();
 
         if format != ColorFormat::Bgra8 {
             let error = DisplayCaptureRuntimeError::unsupported_pixel_format(format!(
                 "unsupported Windows Graphics Capture pixel format: {format:?}"
             ));
             self.handle.report_error(error);
-            return Err(());
+            return Err(FrameHandlerError);
         }
 
         // Windows Graphics Capture reports BGRA frames directly, so we keep that
@@ -151,6 +155,10 @@ fn cursor_capture(options: DisplayCaptureOptions) -> CursorCaptureSettings {
 }
 
 /// Converts the backend crate's startup error into the crate error surface.
-fn capture_api_error(error: GraphicsCaptureApiError<()>) -> DisplayCaptureError {
-    DisplayCaptureError::start_failed(format!("Windows Graphics Capture could not start: {error}"))
+fn capture_api_error(
+    error: GraphicsCaptureApiError<FrameHandlerError>,
+) -> DisplayCaptureError {
+    DisplayCaptureError::start_failed(format!(
+        "Windows Graphics Capture could not start: {error:?}"
+    ))
 }
