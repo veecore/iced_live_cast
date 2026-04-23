@@ -1,4 +1,4 @@
-//! Active display presentation surfaces for `iced`.
+//! Active monitor presentation surfaces for `iced`.
 //!
 //! `iced_live_cast` keeps frame capture and live presentation inside one focused
 //! crate so host applications do not need to move live frames through their own
@@ -10,8 +10,10 @@
 //! - [`handle`] for callers that already own frames and want to push them
 //! - [`source`] for ready-made capture sources like monitor capture
 //!
-//! Run `cargo run --example basic -- 1`
-//! for a full `iced` app with `main()` showing the built-in display source.
+//! `CastView` and `Frame::to_handle()` are part of the default crate surface.
+//!
+//! Run `cargo run --example basic`
+//! for a full `iced` app with `main()` showing the built-in monitor source.
 //!
 //! Run `cargo run --example manual_push`
 //! to see the lower-level manual path where your own producer thread feeds frames.
@@ -28,8 +30,10 @@ mod widget;
 
 pub use frame::{Frame, FrameError};
 pub use handle::{CastHandle, ManualSource, Source};
+pub use iced::widget::image::FilterMethod;
+pub use render::{LiveImage, LiveRasterRenderer};
 pub use source::{
-    Display, DisplayCapture, DisplayCaptureError, DisplayCaptureOptions,
-    DisplayCaptureRuntimeError, DisplayCaptureSource,
+    Monitor, MonitorCapture, MonitorCaptureError, MonitorCaptureOptions,
+    MonitorCaptureRuntimeError, MonitorCaptureSource,
 };
-pub use widget::{CastView, FitMode};
+pub use widget::CastView;

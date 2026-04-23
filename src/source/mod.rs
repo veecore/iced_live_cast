@@ -1,9 +1,9 @@
 //! Ready-made frame sources.
 
-/// Display capture source backed by the host operating system.
-pub mod display;
+/// Monitor capture source backed by the host operating system.
+pub mod monitor;
 
-pub use display::{
-    Display, DisplayCapture, DisplayCaptureError, DisplayCaptureOptions,
-    DisplayCaptureRuntimeError, DisplayCaptureSource,
+pub use monitor::{
+    Monitor, MonitorCapture, MonitorCaptureError, MonitorCaptureOptions,
+    MonitorCaptureRuntimeError, MonitorCaptureSource,
 };

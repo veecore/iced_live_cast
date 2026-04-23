@@ -1,19 +1,19 @@
 [package]
 name = "iced_live_cast"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
-description = "Blazing-fast cross-platform display casting widgets and sources for iced"
+description = "Blazing-fast cross-platform monitor casting widgets and sources for iced"
 license = "MIT OR Apache-2.0"
 readme = "README.md"
 repository = "https://github.com/veecore/iced_live_cast"
 homepage = "https://github.com/veecore/iced_live_cast"
 documentation = "https://docs.rs/iced_live_cast"
-keywords = ["iced", "screen-capture", "display", "wgpu", "desktop"]
+keywords = ["iced", "screen-capture", "monitor", "wgpu", "desktop"]
 categories = ["gui", "rendering"]
 
 [dependencies]
 bytemuck = { version = "1.24", features = ["derive"] }
-iced = { version = "0.14", features = ["advanced", "image"] }
+iced = { version = "0.14", default-features = false, features = ["advanced", "image", "thread-pool", "wgpu"] }
 iced_wgpu = "0.14"
 thiserror = "2.0"
 
@@ -40,6 +40,18 @@ harness = false
 [[bench]]
 name = "gpu_upload"
 harness = false
+
+[[example]]
+name = "basic"
+
+[[example]]
+name = "manual_push"
+
+[[example]]
+name = "side_by_side"
+
+[[example]]
+name = "widget_configs"
 
 [target.'cfg(target_os = "macos")'.dependencies]
 screencapturekit = { version = "1.5.4", features = ["macos_15_0"] }

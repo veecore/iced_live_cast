@@ -1,41 +1,54 @@
-//! ScreenCaptureKit backend for display capture.
+//! ScreenCaptureKit backend for monitor capture.
 
+use super::BackendMonitor;
 use crate::frame::Frame;
 use crate::handle::CastHandle;
-use crate::source::display::{
-    Display, DisplayCaptureError, DisplayCaptureOptions, DisplayCaptureRuntimeError,
-    DisplayCaptureSource,
+use crate::source::monitor::{
+    MonitorCaptureError, MonitorCaptureOptions, MonitorCaptureRuntimeError, MonitorCaptureSource,
 };
-use screencapturekit::FourCharCode;
 use screencapturekit::cm::{CMSampleBuffer, CMTime};
 use screencapturekit::dispatch_queue::{DispatchQoS, DispatchQueue};
 use screencapturekit::error::SCError;
 use screencapturekit::prelude::PixelFormat as CapturePixelFormat;
-use screencapturekit::shareable_content::{SCRunningApplication, SCShareableContent};
+use screencapturekit::shareable_content::{SCDisplay, SCRunningApplication, SCShareableContent};
 use screencapturekit::stream::configuration::SCStreamConfiguration;
 use screencapturekit::stream::content_filter::SCContentFilter;
 use screencapturekit::stream::output_trait::SCStreamOutputTrait;
 use screencapturekit::stream::output_type::SCStreamOutputType;
 use screencapturekit::stream::SCStream;
+use screencapturekit::FourCharCode;
+use std::num::NonZeroU32;
 
+/// Running ScreenCaptureKit worker.
 pub(crate) struct WorkerHandle {
+    /// Active ScreenCaptureKit stream.
     stream: SCStream,
 }
 
 impl WorkerHandle {
-    /// Stops the Windows capture worker and waits for teardown.
+    /// Stops the ScreenCaptureKit worker and waits for teardown.
     pub(crate) fn stop(self) {
         let _ = self.stream.stop_capture();
     }
 }
 
-/// Spawns one ScreenCaptureKit worker for the requested display.
+/// Enumerates every currently available ScreenCaptureKit monitor target.
+pub(crate) fn all() -> Result<Vec<BackendMonitor>, MonitorCaptureError> {
+    SCShareableContent::get()
+        .map_err(source_unavailable)?
+        .displays()
+        .into_iter()
+        .map(monitor_from_sc_display)
+        .collect()
+}
+
+/// Spawns one ScreenCaptureKit worker for the requested monitor.
 pub(crate) fn spawn(
-    handle: CastHandle<DisplayCaptureSource>,
-    display: Display,
-    options: DisplayCaptureOptions,
-) -> Result<WorkerHandle, DisplayCaptureError> {
-    let os_crate_config = config(display, options)?;
+    handle: CastHandle<MonitorCaptureSource>,
+    monitor: BackendMonitor,
+    options: MonitorCaptureOptions,
+) -> Result<WorkerHandle, MonitorCaptureError> {
+    let os_crate_config = config(monitor, options)?;
     let stream = run(handle, os_crate_config).map_err(capture_api_error)?;
 
     Ok(WorkerHandle { stream })
@@ -52,7 +65,7 @@ struct OsCrateConfig {
 /// Output handler that copies frames into the shared capture handle.
 struct FrameHandler {
     /// Shared handle state updated by the output callback.
-    handle: CastHandle<DisplayCaptureSource>,
+    handle: CastHandle<MonitorCaptureSource>,
 }
 
 impl SCStreamOutputTrait for FrameHandler {
@@ -70,7 +83,7 @@ impl SCStreamOutputTrait for FrameHandler {
 
         let Ok(guard) = pixel_buffer.lock_read_only() else {
             self.handle
-                .report_error(DisplayCaptureRuntimeError::frame_access(
+                .report_error(MonitorCaptureRuntimeError::frame_access(
                     "ScreenCaptureKit could not lock the frame buffer for read-only access",
                 ));
             return;
@@ -81,7 +94,7 @@ impl SCStreamOutputTrait for FrameHandler {
 
         if actual_format != expected_format {
             self.handle
-                .report_error(DisplayCaptureRuntimeError::unsupported_pixel_format(
+                .report_error(MonitorCaptureRuntimeError::unsupported_pixel_format(
                     format!(
                         "ScreenCaptureKit produced an unsupported pixel format: {}",
                         actual_format.display()
@@ -107,11 +120,11 @@ impl SCStreamOutputTrait for FrameHandler {
 
 /// Runs the ScreenCaptureKit stream until the handle stops.
 fn run(
-    handle: CastHandle<DisplayCaptureSource>,
+    handle: CastHandle<MonitorCaptureSource>,
     os_crate_config: OsCrateConfig,
 ) -> Result<SCStream, SCError> {
     let queue = DispatchQueue::new(
-        "dev.iced-live-cast.display-stream",
+        "dev.iced-live-cast.monitor-stream",
         DispatchQoS::UserInteractive,
     );
 
@@ -129,23 +142,23 @@ fn run(
     Ok(stream)
 }
 
-/// Builds the ScreenCaptureKit configuration from the selected display and options.
+/// Builds the ScreenCaptureKit configuration from the selected monitor and options.
 fn config(
-    display: Display,
-    options: DisplayCaptureOptions,
-) -> Result<OsCrateConfig, DisplayCaptureError> {
-    let content = SCShareableContent::get().map_err(|error| {
-        DisplayCaptureError::source_unavailable(format!(
-            "ScreenCaptureKit could not list shareable content: {error}"
-        ))
-    })?;
+    monitor: BackendMonitor,
+    options: MonitorCaptureOptions,
+) -> Result<OsCrateConfig, MonitorCaptureError> {
+    let content = SCShareableContent::get().map_err(source_unavailable)?;
+    let monitor_id = monitor.id().get();
 
-    let selected_display = content
+    let selected_monitor = content
         .displays()
         .into_iter()
-        .find(|candidate| candidate.display_id() == display.id().get())
+        .find(|candidate| candidate.display_id() == monitor_id)
         .ok_or_else(|| {
-            DisplayCaptureError::display_unavailable(format!("{display} is no longer available"))
+            MonitorCaptureError::monitor_unavailable(format!(
+                "monitor:{} is no longer available",
+                monitor.id()
+            ))
         })?;
 
     let current_app = if options.excludes_self {
@@ -156,19 +169,19 @@ fn config(
 
     let filter = if let Some(current_app) = current_app.as_ref() {
         SCContentFilter::create()
-            .with_display(&selected_display)
+            .with_display(&selected_monitor)
             .with_excluding_applications(&[current_app], &[])
             .build()
     } else {
         SCContentFilter::create()
-            .with_display(&selected_display)
+            .with_display(&selected_monitor)
             .with_excluding_windows(&[])
             .build()
     };
 
     let stream = SCStreamConfiguration::new()
-        .with_width(selected_display.width())
-        .with_height(selected_display.height())
+        .with_width(selected_monitor.width())
+        .with_height(selected_monitor.height())
         .with_pixel_format(CapturePixelFormat::BGRA)
         .with_shows_cursor(options.shows_cursor)
         .with_shows_mouse_clicks(options.shows_click_indicators)
@@ -178,7 +191,7 @@ fn config(
 }
 
 /// Returns the current app for self-exclusion when ScreenCaptureKit can resolve it.
-fn current_app(content: &SCShareableContent) -> Result<SCRunningApplication, DisplayCaptureError> {
+fn current_app(content: &SCShareableContent) -> Result<SCRunningApplication, MonitorCaptureError> {
     let current_pid = std::process::id() as i32;
 
     content
@@ -186,13 +199,29 @@ fn current_app(content: &SCShareableContent) -> Result<SCRunningApplication, Dis
         .into_iter()
         .find(|app| app.process_id() == current_pid)
         .ok_or_else(|| {
-            DisplayCaptureError::self_exclusion_unavailable(
+            MonitorCaptureError::self_exclusion_unavailable(
                 "the current app could not be excluded from ScreenCaptureKit capture",
             )
         })
 }
 
 /// Converts the backend crate's startup error into the crate error surface.
-fn capture_api_error(error: SCError) -> DisplayCaptureError {
-    DisplayCaptureError::start_failed(format!("ScreenCaptureKit could not start capture: {error}"))
+fn capture_api_error(error: SCError) -> MonitorCaptureError {
+    MonitorCaptureError::start_failed(format!("ScreenCaptureKit could not start capture: {error}"))
+}
+
+/// Builds one backend monitor target from one ScreenCaptureKit display.
+fn monitor_from_sc_display(display: SCDisplay) -> Result<BackendMonitor, MonitorCaptureError> {
+    NonZeroU32::new(display.display_id())
+        .map(BackendMonitor::new)
+        .ok_or_else(|| {
+            MonitorCaptureError::source_unavailable("ScreenCaptureKit returned a zero display id")
+        })
+}
+
+/// Converts one ScreenCaptureKit source-listing failure into the crate error surface.
+fn source_unavailable(error: SCError) -> MonitorCaptureError {
+    MonitorCaptureError::source_unavailable(format!(
+        "ScreenCaptureKit could not list shareable content: {error}"
+    ))
 }

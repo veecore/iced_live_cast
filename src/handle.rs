@@ -129,9 +129,7 @@ impl<S: Source> CastHandle<S> {
     pub fn snapshot(&self) -> Option<Frame> {
         self.inner.snapshot()
     }
-}
 
-impl<S: Source> CastHandle<S> {
     /// Returns the latest error reported by a source.
     pub fn last_error(&self) -> Option<S::Error> {
         self.inner
@@ -139,6 +137,15 @@ impl<S: Source> CastHandle<S> {
             .read()
             .ok()
             .and_then(|error| error.clone())
+    }
+
+    /// Returns and clears the latest error reported by a source.
+    pub(crate) fn take_last_error(&self) -> Option<S::Error> {
+        self.inner
+            .last_error
+            .write()
+            .ok()
+            .and_then(|mut error| error.take())
     }
 }
 
@@ -204,16 +211,6 @@ pub(crate) struct CastHandleInner<S: Source> {
 }
 
 impl<S: Source> CastHandleInner<S> {
-    /// Returns the current frame generation.
-    pub fn generation(&self) -> u64 {
-        self.generation.load(Ordering::Relaxed)
-    }
-
-    /// Returns the current error generation.
-    pub fn error_generation(&self) -> u64 {
-        self.error_generation.load(Ordering::Relaxed)
-    }
-
     /// Returns a cloneable snapshot of the latest frame.
     pub fn snapshot(&self) -> Option<Frame> {
         self.latest_frame
@@ -270,6 +267,7 @@ impl<S: Source> Drop for CastHandleInner<S> {
 mod tests {
     use super::{CastHandle, ManualSource};
     use crate::frame::Frame;
+    use std::sync::atomic::Ordering;
 
     /// Active handles should advance generations when new frames arrive.
     #[test]
@@ -278,7 +276,7 @@ mod tests {
 
         handle.present(sample_frame());
 
-        assert_eq!(handle.inner.generation(), 1);
+        assert_eq!(handle.inner.generation.load(Ordering::Relaxed), 1);
     }
 
     /// Paused handles should ignore incoming frames until they resume.
@@ -291,7 +289,7 @@ mod tests {
         handle.resume();
         handle.present(sample_frame());
 
-        assert_eq!(handle.inner.generation(), 1);
+        assert_eq!(handle.inner.generation.load(Ordering::Relaxed), 1);
     }
 
     /// Stopping a handle should flip the stopped flag immediately.
@@ -331,7 +329,7 @@ mod tests {
 
         handle.report_error("boom");
 
-        assert_eq!(handle.inner.error_generation(), 1);
+        assert_eq!(handle.inner.error_generation.load(Ordering::Relaxed), 1);
     }
 
     /// Fresh frames should clear the last reported source error.

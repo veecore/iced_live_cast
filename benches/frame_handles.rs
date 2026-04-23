@@ -4,7 +4,8 @@ mod support;
 
 use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
 use std::hint::black_box;
-use support::{packed_bgra_frame, seeded_handle, FRAME_PROFILES};
+use support::packed_bgra_frame;
+use support::{seeded_handle, FRAME_PROFILES};
 
 /// Benchmarks direct frame-to-handle conversion.
 fn bench_frame_to_handle(c: &mut Criterion) {
