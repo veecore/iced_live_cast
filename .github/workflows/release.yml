@@ -13,7 +13,7 @@ concurrency:
 jobs:
   verify:
     name: Verify release
-    runs-on: ubuntu-latest
+    runs-on: macos-latest
 
     steps:
       - name: Check out repository
@@ -27,7 +27,7 @@ jobs:
       - name: Cache Cargo artifacts
         uses: Swatinem/rust-cache@v2
         with:
-          shared-key: release-verify
+          shared-key: release-verify-macos
           cache-on-failure: true
           workspaces: |
             . -> target
