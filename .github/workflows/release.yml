@@ -71,13 +71,6 @@ jobs:
             . -> target
 
       - name: Publish to crates.io with trusted publishing
-        if: ${{ secrets.CARGO_REGISTRY_TOKEN == '' }}
-        run: cargo publish --locked
-
-      - name: Publish to crates.io with token
-        if: ${{ secrets.CARGO_REGISTRY_TOKEN != '' }}
-        env:
-          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
         run: cargo publish --locked
 
       - name: Create GitHub release
