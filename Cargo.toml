@@ -1,6 +1,6 @@
 [package]
 name = "iced_live_cast"
-version = "0.1.1"
+version = "0.1.2"
 edition = "2021"
 description = "Blazing-fast cross-platform monitor casting widgets and sources for iced"
 license = "MIT OR Apache-2.0"
