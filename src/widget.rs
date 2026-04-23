@@ -9,6 +9,9 @@ use iced::{Element, Event, Length, Rectangle, Rotation, Size};
 use iced_wgpu::primitive::Renderer as PrimitiveRenderer;
 use std::marker::PhantomData;
 
+/// Callback used to surface one newly reported source error.
+type OnError<'a, Message, S> = dyn Fn(&<S as Source>::Error) -> Option<Message> + 'a;
+
 /// Active widget that renders one [`CastHandle`].
 pub struct CastView<'a, Message, S = ManualSource, Theme = iced::Theme, Renderer = iced::Renderer>
 where
@@ -23,7 +26,7 @@ where
     ///
     /// Returning `None` lets callers acknowledge an error without forcing a
     /// placeholder application message.
-    on_error: Option<Box<dyn Fn(&S::Error) -> Option<Message> + 'a>>,
+    on_error: Option<Box<OnError<'a, Message, S>>>,
     /// Marker tying the widget to the app's message and renderer types.
     _marker: PhantomData<(Theme, Renderer)>,
 }

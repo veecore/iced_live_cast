@@ -6,7 +6,41 @@ on:
       - main
   pull_request:
 
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
+  hygiene:
+    name: Hygiene
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install stable Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Cache Cargo artifacts
+        uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: ci-hygiene
+          cache-on-failure: true
+          workspaces: |
+            . -> target
+
+      - name: Check formatting
+        run: cargo fmt --all -- --check
+
+      - name: Run clippy
+        run: cargo clippy --all-targets -- -D warnings
+
+      - name: Verify package contents
+        run: cargo publish --dry-run --locked
+
   test:
     name: ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
@@ -14,6 +48,7 @@ jobs:
       fail-fast: false
       matrix:
         os:
+          - ubuntu-latest
           - macos-latest
           - windows-latest
 
@@ -26,9 +61,14 @@ jobs:
 
       - name: Cache Cargo artifacts
         uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: ci-${{ matrix.os }}
+          cache-on-failure: true
+          workspaces: |
+            . -> target
 
       - name: Check library, examples, and benches
-        run: cargo check --lib --examples --benches
+        run: cargo check --locked --lib --examples --benches
 
       - name: Run unit tests
-        run: cargo test --lib
+        run: cargo test --locked --lib
